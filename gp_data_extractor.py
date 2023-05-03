@@ -99,13 +99,17 @@ def generate_parquet_file(table_name,conn):
         table_name: table name
         conn: db connection
     Returns:
+        bool: if parquet file generate successfully returns true else false 
         str: filename for the generated parquet file
     '''
-    read_records = pd.read_sql_query(config.QUERY_GET_ALL_RECORDS_FROM_TABLE.format(table_name=table_name), conn)
-    df = pd.DataFrame(read_records)
-    parquet_filename = f"{table_name}{datetime.utcnow().strftime('_%d-%b-%Y %I_%M_%S %p')}"
-    df.to_parquet(f".\{parquet_filename}", compression='gzip')
-    return parquet_filename
+    try:
+        read_records = pd.read_sql_query(config.QUERY_GET_ALL_RECORDS_FROM_TABLE.format(table_name=table_name), conn)
+        df = pd.DataFrame(read_records)
+        parquet_filename = f"{table_name}{datetime.utcnow().strftime('_%d-%b-%Y %I_%M_%S %p')}"
+        df.to_parquet(f".\{parquet_filename}", compression='gzip')
+        return True,parquet_filename
+    except:
+        return False,None
 
 def blob_upload(parquet_filename,db_name,table_name):
     ''' Upload the parquet file into azure blob
@@ -141,13 +145,16 @@ def parquet_job(db_job_info):
     logging.info(f'db: {db_name} and tables: {tables}')
     for table in tables:
         logging.info(f'generating parquet file for db:  {db_name} table: {table}')
-        parquet_filename = generate_parquet_file(table,conn)
+        generate_parquet = generate_parquet_file(table,conn)
 
-        logging.info(f'upload parquet file to blob {db_name} table: {table} file name: {parquet_filename}.parquet')
-        blob_upload(parquet_filename,db_name,table)
+        is_parquet_generated = generate_parquet[0]
 
-        logging.info(f'deleting local parquet file {db_name} table: {table} file name: {parquet_filename}.parquet')
-        remove_parquet_file(parquet_filename)
+        if is_parquet_generated:
+            parquet_filename = generate_parquet[1]
+            logging.info(f'upload parquet file to blob {db_name} table: {table} file name: {parquet_filename}.parquet')
+            blob_upload(parquet_filename,db_name,table)
+            logging.info(f'deleting local parquet file {db_name} table: {table} file name: {parquet_filename}.parquet')
+            remove_parquet_file(parquet_filename)
 
     conn.close()
     logging.info('end')
@@ -179,8 +186,14 @@ def run_jobs(db_lists, gp_db_username, gp_db_password):
 if __name__ == "__main__":
 
     # Read EDW secrets
-    edw_db_username = read_secret_from_key_vault(config.KEY_VAULT_NAME, config.EDW_KEY_VAULT_SECRET_NAME_DB_USER_NAME)
-    edw_db_password = read_secret_from_key_vault(config.KEY_VAULT_NAME, config.EDW_KEY_VAULT_SECRET_NAME_DB_PASSWORD)
+    # edw_db_username = read_secret_from_key_vault(config.KEY_VAULT_NAME, config.EDW_KEY_VAULT_SECRET_NAME_DB_USER_NAME)
+    # edw_db_password = read_secret_from_key_vault(config.KEY_VAULT_NAME, config.EDW_KEY_VAULT_SECRET_NAME_DB_PASSWORD)
+
+    edw_db_username = "madhan"
+    edw_db_password = "madhan@123"
+
+    GP_USER_DB_NAME = "madhan"
+    GP_USER_DB_PASSWORD = "madhan@123"
 
     # Get Active GP Databases
     gp_db_list = get_active_gp_databases(   config.EDW_DB_SERVER_HOST, 
@@ -189,8 +202,8 @@ if __name__ == "__main__":
     logging.info(f'gp_db_list: {gp_db_list}')
     
     # Read GP secrets
-    GP_USER_DB_NAME = read_secret_from_key_vault(config.KEY_VAULT_NAME, config.GP_KEY_VAULT_SECRET_NAME_DB_USER_NAME)
-    GP_USER_DB_PASSWORD = read_secret_from_key_vault(config.KEY_VAULT_NAME, config.GP_KEY_VAULT_SECRET_NAME_DB_PASSWORD)
+    # GP_USER_DB_NAME = read_secret_from_key_vault(config.KEY_VAULT_NAME, config.GP_KEY_VAULT_SECRET_NAME_DB_USER_NAME)
+    # GP_USER_DB_PASSWORD = read_secret_from_key_vault(config.KEY_VAULT_NAME, config.GP_KEY_VAULT_SECRET_NAME_DB_PASSWORD)
 
     #To split the jobs based on max job count
     job_details = split_jobs(gp_db_list, config.MAX_JOB_COUNT)
