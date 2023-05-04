@@ -7,6 +7,7 @@ import pandas as pd
 import logging
 import config
 import pyodbc
+import csv
 import os
 
 logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
@@ -93,23 +94,36 @@ def get_all_tables(conn, db_name, query):
     rows = exec_query(conn, query.format(db_name=db_name))
     return [table[0] for table in rows]
 
+def generate_audit_csv_file():
+    ''' To generate the new csv file with column names '''
+    logging.info(f'Generate the new csv file')
+    with open('auditing.csv', 'w', newline='') as file:
+        writer = csv.writer(file)
+        column_names = ["Type_Of_Data","DB","Source_Table_Name","Last_Run_Date","RunStatus","AffectedRows","ErrorMessage"]
+        writer.writerow(column_names)
+
 def generate_parquet_file(table_name,conn):
     ''' To write the parquet file from table records
     Args:
         table_name: table name
         conn: db connection
     Returns:
-        bool: if parquet file generate successfully returns true else false 
-        str: filename for the generated parquet file
+        list: list. which contains parquet file informations.
+        Example [bool(if parquet file generate successfully returns true else false),
+                str(filename for the generated parquet file),
+                int(affected rows),
+                str(error message)]
     '''
     try:
         read_records = pd.read_sql_query(config.QUERY_GET_ALL_RECORDS_FROM_TABLE.format(table_name=table_name), conn)
         df = pd.DataFrame(read_records)
         parquet_filename = f"{table_name}{datetime.utcnow().strftime('_%d-%b-%Y %I_%M_%S %p')}"
         df.to_parquet(f".\{parquet_filename}", compression='gzip')
-        return True,parquet_filename
+        parquet_info = True,parquet_filename,len(df),None
+        return parquet_info
     except:
-        return False,None
+        parquet_info = False,None,0,'failed to execute the query' 
+        return parquet_info
 
 def blob_upload(parquet_filename,db_name,table_name):
     ''' Upload the parquet file into azure blob
@@ -131,6 +145,36 @@ def remove_parquet_file(parquet_filename):
     '''
     os.remove(f".\{parquet_filename}")
 
+def audit_row_dic(db,table,run_status,affected_rows,error_message):
+    ''' To add the row into a dictionary
+    Args:
+        db: Database name
+        table: Table name
+        run_status: parquet file status
+        affected_rows: no. of rows affected
+        error_message: reason for parquet generation failed
+    Returns:
+        dict: dict. which contains str(column names) and values
+    '''
+    row_dic = {'Type_Of_Data': 'raw',
+                'DB': db,
+                'Source_Table_Name': table,
+                'Last_Run_Date': datetime.utcnow().strftime('%d-%b-%Y'),  
+                'RunStatus': run_status,
+                'AffectedRows': affected_rows,
+                'ErrorMessage':error_message}
+    return row_dic
+
+def add_row_into_audit_file(audit_row):
+    ''' To add the row into a existing csv file
+    Args:
+        audit_row: dict contains field_names and values for csv file 
+    '''
+    with open('auditing.csv', 'a', newline='') as file:
+        field_names = ["Type_Of_Data","DB","Source_Table_Name","Last_Run_Date","RunStatus","AffectedRows","ErrorMessage"]
+        dictwriter_object = csv.DictWriter(file, fieldnames=field_names)
+        dictwriter_object.writerow(audit_row)
+
 def parquet_job(db_job_info):
     ''' To generate and upload the parquet file for each tables
     Args:
@@ -148,6 +192,9 @@ def parquet_job(db_job_info):
         generate_parquet = generate_parquet_file(table,conn)
 
         is_parquet_generated = generate_parquet[0]
+        run_status = 'success' if is_parquet_generated else 'fail'
+        affected_rows = generate_parquet[2]
+        error_message = generate_parquet[3]
 
         if is_parquet_generated:
             parquet_filename = generate_parquet[1]
@@ -155,6 +202,10 @@ def parquet_job(db_job_info):
             blob_upload(parquet_filename,db_name,table)
             logging.info(f'deleting local parquet file {db_name} table: {table} file name: {parquet_filename}.parquet')
             remove_parquet_file(parquet_filename)
+
+        logging.info(f'insert the data into csv file {db_name} table: {table} run status: {run_status}')
+        audit_row = audit_row_dic(db_name,table,run_status,affected_rows,error_message)
+        add_row_into_audit_file(audit_row)
 
     conn.close()
     logging.info('end')
@@ -204,5 +255,8 @@ if __name__ == "__main__":
 
     logging.info(f'job_details: {job_details}')
 
+    #To generate the csv file
+    generate_audit_csv_file()
+
     #To execute the jobs asynchronously
-    run_jobs(job_details, GP_USER_DB_NAME, GP_USER_DB_PASSWORD)    
+    run_jobs(job_details, GP_USER_DB_NAME, GP_USER_DB_PASSWORD)
