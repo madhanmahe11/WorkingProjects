@@ -42,7 +42,7 @@ def create_db_connection(host, db_name, user_name, password):
     con_str = f'DRIVER=SQL Server;SERVER={host};DATABASE={db_name};ENCRYPT=no;UID={user_name};PWD={password}'
     return pyodbc.connect(con_str)
 
-def execute_sp(host, db_name, user_name, password):
+def get_list_of_rows_from_sp(host, db_name, user_name, password):
     ''' To get list of rows 
     Args:
         host: Name of DB host/ip address
@@ -192,7 +192,7 @@ if __name__ == "__main__":
     form_db_password = read_secret_from_key_vault(config.KEY_VAULT_NAME, config.FORM_KEY_VAULT_SECRET_NAME_DB_PASSWORD)
 
     # Get results from sp
-    result_set = execute_sp(config.FORM_DB_SERVER_HOST, config.FORM_DB_NAME, 
+    result_set = get_list_of_rows_from_sp(config.FORM_DB_SERVER_HOST, config.FORM_DB_NAME, 
                             form_db_username,form_db_password)    
 
     #To split the jobs based on max job count
