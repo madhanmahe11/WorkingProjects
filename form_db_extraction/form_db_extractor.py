@@ -85,6 +85,7 @@ def exec_sp(conn, sp):
     rows = cursor.fetchall()
     return rows
 
+
 def generate_parquet_file(script, file_name, conn):
     ''' To write the parquet file by execute the script 
     Args:
@@ -114,7 +115,10 @@ def blob_upload(file_name):
         file_name: parquet filename
     '''
     dt = datetime.utcnow()
-    blob_client = blob_service_client.get_blob_client(container=config.AZURE_STORAGE_ACCOUNT_CONTAINER_NAME, blob=f"Form/{dt.strftime('%Y')}/{dt.strftime('%b')}/{dt.strftime('%d-%b-%Y')}/{file_name}{dt.strftime('_%d-%b-%Y %I:%M:%S %p')}")
+    blob_name_prefix = config.BLOB_NAME_PREFIX.format(  year = dt.strftime('%Y'),
+                                                        month = dt.strftime('%b'),
+                                                        date = dt.strftime('%d-%b-%Y'))
+    blob_client = blob_service_client.get_blob_client(container=config.AZURE_STORAGE_ACCOUNT_CONTAINER_NAME, blob=f"{blob_name_prefix}/{file_name}{dt.strftime('_%d-%b-%Y %I:%M:%S %p')}")
     file = open(f".\{file_name}", "rb")
     blob_client.upload_blob(file)
     file.close()
