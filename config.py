@@ -31,7 +31,7 @@ QUERY_GET_ALL_TABLES_FOR_DB= """  SELECT TABLE_NAME
                             """
 
 # Query template to get all records in a Table
-QUERY_GET_ALL_RECORDS_FROM_TABLE= """  SELECT * FROM {table_name}  """
+QUERY_GET_ALL_RECORDS_FROM_TABLE= """  SELECT * FROM [{table_name}]  """
 
 # Azure storage account connection string
 AZURE_STORAGE_ACCOUNT_CONNECTION_STRING= "DefaultEndpointsProtocol=https;AccountName=storageaccountuh;AccountKey=smab4yOdWek5Mg4+lf89xFB50ggG9KeDhHXszVqa/sibs9rMlYHy6CMH54ASm9dxd0V94toOmEjG+AStoYY3AQ==;EndpointSuffix=core.windows.net"
