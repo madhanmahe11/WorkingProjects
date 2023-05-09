@@ -193,7 +193,7 @@ def parquet_job(db_job_info):
     Args:
         db_job_info: db info with db_name,username,password,host
     Returns:
-        bool: true
+        bool: if parquet generate and upload into the blob successfully it returns true else false 
     '''
     logging.info('start')
     db_name = db_job_info['db_name']
@@ -211,14 +211,15 @@ def parquet_job(db_job_info):
 
         if is_parquet_generated:
             parquet_filename = generate_parquet[1]
-            logging.info(f'upload parquet file to blob {db_name} table: {table} file name: {parquet_filename}.parquet')
+            logging.info(f'upload parquet file to blob {db_name} table: {table} file name: {parquet_filename}')
             is_blob_upload = blob_upload(parquet_filename,db_name,table)
 
             if not is_blob_upload:
+                is_parquet_generated = False
                 run_status = 'fail'
-                error_message = f'blob upload failed for the filename : {parquet_filename}'
+                error_message = f'blob upload failed for the db: {db_name} table: {table} file name: {parquet_filename}'
 
-            logging.info(f'deleting local parquet file {db_name} table: {table} file name: {parquet_filename}.parquet')
+            logging.info(f'deleting local parquet file {db_name} table: {table} file name: {parquet_filename}')
             remove_parquet_file(parquet_filename)
 
         logging.info(f'insert the data into csv file {db_name} table: {table} run status: {run_status}')
@@ -227,7 +228,7 @@ def parquet_job(db_job_info):
 
     conn.close()
     logging.info('end')
-    return True
+    return is_parquet_generated
 
     
 def run_jobs(db_lists, gp_db_username, gp_db_password, audit_filename):
@@ -247,18 +248,32 @@ def run_jobs(db_lists, gp_db_username, gp_db_password, audit_filename):
                                 'host': config.GP_DB_SERVER_HOST, 
                                 'username': gp_db_username,
                                 'password': gp_db_password,
-                                'audit_csv_filename': audit_filename}
+                                'audit_csv_filename': audit_filename    }
                 
                 db_job_info.append(local_dic)
             for db in zip(db_job_info, executor.map(parquet_job, db_job_info)):
-                logging.info(f"parquet generation completed for {db[0]['db_name']}")    
+                if db[1]:
+                    logging.info(f"parquet generation completed for {db[0]['db_name']}")  
+                else:
+                    logging.info(f"parquet generation failed for {db[0]['db_name']}")  
+                      
 
 if __name__ == "__main__":
 
     # Read EDW secrets
-    edw_db_username = read_secret_from_key_vault(config.KEY_VAULT_NAME, config.EDW_KEY_VAULT_SECRET_NAME_DB_USER_NAME)
-    edw_db_password = read_secret_from_key_vault(config.KEY_VAULT_NAME, config.EDW_KEY_VAULT_SECRET_NAME_DB_PASSWORD)
+    # edw_db_username = read_secret_from_key_vault(config.KEY_VAULT_NAME, config.EDW_KEY_VAULT_SECRET_NAME_DB_USER_NAME)
+    # edw_db_password = read_secret_from_key_vault(config.KEY_VAULT_NAME, config.EDW_KEY_VAULT_SECRET_NAME_DB_PASSWORD)
 
+    edw_db_username = "madhan"
+
+    edw_db_password = "madhan@123"
+
+
+
+
+    GP_USER_DB_NAME = "madhan"
+
+    GP_USER_DB_PASSWORD = "madhan@123"
     # Get Active GP Databases
     gp_db_list = get_active_gp_databases(   config.EDW_DB_SERVER_HOST, 
                                             config.EDW_DB_NAME, edw_db_username,edw_db_password)    
@@ -266,8 +281,8 @@ if __name__ == "__main__":
     logging.info(f'gp_db_list: {gp_db_list}')
     
     # Read GP secrets
-    GP_USER_DB_NAME = read_secret_from_key_vault(config.KEY_VAULT_NAME, config.GP_KEY_VAULT_SECRET_NAME_DB_USER_NAME)
-    GP_USER_DB_PASSWORD = read_secret_from_key_vault(config.KEY_VAULT_NAME, config.GP_KEY_VAULT_SECRET_NAME_DB_PASSWORD)
+    # GP_USER_DB_NAME = read_secret_from_key_vault(config.KEY_VAULT_NAME, config.GP_KEY_VAULT_SECRET_NAME_DB_USER_NAME)
+    # GP_USER_DB_PASSWORD = read_secret_from_key_vault(config.KEY_VAULT_NAME, config.GP_KEY_VAULT_SECRET_NAME_DB_PASSWORD)
 
     #To split the jobs based on max job count
     job_details = split_jobs(gp_db_list, config.MAX_JOB_COUNT)
