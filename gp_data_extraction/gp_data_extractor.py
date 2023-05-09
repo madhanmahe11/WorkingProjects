@@ -96,11 +96,15 @@ def get_all_tables(conn, db_name, query):
 
 def generate_audit_csv_file():
     ''' To generate the new csv file with column names '''
+
     logging.info(f'Generate the new csv file')
-    with open('auditing.csv', 'w', newline='') as file:
+    audit_csv_filename = f'gp_extract_audition_{datetime.utcnow().strftime("%d-%b-%Y %I_%M_%S %p")}'
+    with open(f'{audit_csv_filename}.csv', 'w', newline='') as file:
         writer = csv.writer(file)
         column_names = ["Type_Of_Data","DB","Source_Table_Name","Last_Run_Date","RunStatus","AffectedRows","ErrorMessage"]
         writer.writerow(column_names)
+
+    return audit_csv_filename
 
 def generate_parquet_file(table_name,conn):
     ''' To write the parquet file from table records
@@ -165,12 +169,12 @@ def audit_row_dic(db,table,run_status,affected_rows,error_message):
                 'ErrorMessage':error_message}
     return row_dic
 
-def add_row_into_audit_file(audit_row):
+def add_row_into_audit_file(audit_row, audit_csv_filename):
     ''' To add the row into a existing csv file
     Args:
         audit_row: dict contains field_names and values for csv file 
     '''
-    with open('auditing.csv', 'a', newline='') as file:
+    with open(f'{audit_csv_filename}.csv', 'a', newline='') as file:
         field_names = ["Type_Of_Data","DB","Source_Table_Name","Last_Run_Date","RunStatus","AffectedRows","ErrorMessage"]
         dictwriter_object = csv.DictWriter(file, fieldnames=field_names)
         dictwriter_object.writerow(audit_row)
@@ -204,15 +208,15 @@ def parquet_job(db_job_info):
             remove_parquet_file(parquet_filename)
 
         logging.info(f'insert the data into csv file {db_name} table: {table} run status: {run_status}')
-        audit_row = audit_row_dic(db_name,table,run_status,affected_rows,error_message)
-        add_row_into_audit_file(audit_row)
+        audit_row = audit_row_dic(db_name, table, run_status, affected_rows, error_message)
+        add_row_into_audit_file(audit_row, db_job_info['audit_csv_filename'])
 
     conn.close()
     logging.info('end')
     return True
 
     
-def run_jobs(db_lists, gp_db_username, gp_db_password):
+def run_jobs(db_lists, gp_db_username, gp_db_password, audit_filename):
     ''' To execute the jobs asynchronously
     Args:
         db_lists: splitted DB lists based on max job count
@@ -228,7 +232,8 @@ def run_jobs(db_lists, gp_db_username, gp_db_password):
                 local_dic = {   'db_name': db, 
                                 'host': config.GP_DB_SERVER_HOST, 
                                 'username': gp_db_username,
-                                'password': gp_db_password}
+                                'password': gp_db_password,
+                                'audit_csv_filename': audit_filename}
                 
                 db_job_info.append(local_dic)
             for db in zip(db_job_info, executor.map(parquet_job, db_job_info)):
@@ -256,7 +261,7 @@ if __name__ == "__main__":
     logging.info(f'job_details: {job_details}')
 
     #To generate the csv file
-    generate_audit_csv_file()
+    audit_filename = generate_audit_csv_file()
 
     #To execute the jobs asynchronously
-    run_jobs(job_details, GP_USER_DB_NAME, GP_USER_DB_PASSWORD)
+    run_jobs(job_details, GP_USER_DB_NAME, GP_USER_DB_PASSWORD, audit_filename)
