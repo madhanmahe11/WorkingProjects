@@ -136,15 +136,20 @@ def blob_upload(parquet_filename,db_name,table_name):
         db_name: database name
         table_name: table name
     '''
-    dt = datetime.utcnow()
-    blob_name_prefix = config.BLOB_NAME_PREFIX.format(  year = dt.strftime('%Y'),
-                                                        month = dt.strftime('%b'),
-                                                        date = dt.strftime('%d-%b-%Y'),
-                                                        db_name = db_name )
-    blob_client = blob_service_client.get_blob_client(container=config.AZURE_STORAGE_ACCOUNT_CONTAINER_NAME, blob=f"{blob_name_prefix}/{table_name}{dt.strftime('_%d-%b-%Y %I:%M:%S %p')}")
-    file = open(f".\{parquet_filename}", "rb")
-    blob_client.upload_blob(file)
-    file.close()
+
+    try:
+        dt = datetime.utcnow()
+        blob_name_prefix = config.BLOB_NAME_PREFIX.format(  year = dt.strftime('%Y'),
+                                                            month = dt.strftime('%b'),
+                                                            date = dt.strftime('%d-%b-%Y'),
+                                                            db_name = db_name )
+        blob_client = blob_service_client.get_blob_client(container=config.AZURE_STORAGE_ACCOUNT_CONTAINER_NAME, blob=f"{blob_name_prefix}/{table_name}{dt.strftime('_%d-%b-%Y %I:%M:%S %p')}")
+        file = open(f".\{parquet_filename}", "rb")
+        blob_client.upload_blob(file)
+        file.close()
+        return True
+    except:
+        return False
 
 def remove_parquet_file(parquet_filename):
     ''' Remove the parquet file from local
@@ -207,7 +212,12 @@ def parquet_job(db_job_info):
         if is_parquet_generated:
             parquet_filename = generate_parquet[1]
             logging.info(f'upload parquet file to blob {db_name} table: {table} file name: {parquet_filename}.parquet')
-            blob_upload(parquet_filename,db_name,table)
+            is_blob_upload = blob_upload(parquet_filename,db_name,table)
+
+            if not is_blob_upload:
+                run_status = 'fail'
+                error_message = f'blob upload failed for the filename : {parquet_filename}'
+
             logging.info(f'deleting local parquet file {db_name} table: {table} file name: {parquet_filename}.parquet')
             remove_parquet_file(parquet_filename)
 
