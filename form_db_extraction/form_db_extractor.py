@@ -53,7 +53,7 @@ def get_list_of_rows_from_sp(host, db_name, user_name, password):
         List: List of rows
     '''
     conn = create_db_connection(host, db_name, user_name, password)               
-    rows = exec_sp(conn,config.SP_GET_SCRIPTS
+    rows = exec_sp(conn, config.SP_GET_SCRIPTS
                             .format(    table_name = "base.Record",
                                         filter_column = "createdat",
                                         start_date = "2022-11-30",

@@ -137,7 +137,11 @@ def blob_upload(parquet_filename,db_name,table_name):
         table_name: table name
     '''
     dt = datetime.utcnow()
-    blob_client = blob_service_client.get_blob_client(container=config.AZURE_STORAGE_ACCOUNT_CONTAINER_NAME, blob=f"GP/{dt.strftime('%Y')}/{dt.strftime('%b')}/{dt.strftime('%d-%b-%Y')}/{db_name}/{table_name}{dt.strftime('_%d-%b-%Y %I:%M:%S %p')}")
+    blob_name_prefix = config.BLOB_NAME_PREFIX.format(  year = dt.strftime('%Y'),
+                                                        month = dt.strftime('%b'),
+                                                        date = dt.strftime('%d-%b-%Y'),
+                                                        db_name = db_name )
+    blob_client = blob_service_client.get_blob_client(container=config.AZURE_STORAGE_ACCOUNT_CONTAINER_NAME, blob=f"{blob_name_prefix}/{table_name}{dt.strftime('_%d-%b-%Y %I:%M:%S %p')}")
     file = open(f".\{parquet_filename}", "rb")
     blob_client.upload_blob(file)
     file.close()
@@ -163,7 +167,7 @@ def audit_row_dic(db,table,run_status,affected_rows,error_message):
     row_dic = {'Type_Of_Data': 'raw',
                 'DB': db,
                 'Source_Table_Name': table,
-                'Last_Run_Date': datetime.utcnow().strftime('%d-%b-%Y'),  
+                'Last_Run_Date': datetime.utcnow(),  
                 'RunStatus': run_status,
                 'AffectedRows': affected_rows,
                 'ErrorMessage':error_message}

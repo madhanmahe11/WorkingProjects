@@ -39,3 +39,7 @@ AZURE_STORAGE_ACCOUNT_CONNECTION_STRING= "DefaultEndpointsProtocol=https;Account
 # Azure container name
 AZURE_STORAGE_ACCOUNT_CONTAINER_NAME="raw"
 
+# Azure blob name
+BLOB_NAME_PREFIX = "GP/{year}/{month}/{date}/{db_name}"
+
+
