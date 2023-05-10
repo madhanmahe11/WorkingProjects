@@ -114,15 +114,19 @@ def blob_upload(file_name):
     Args:
         file_name: parquet filename
     '''
-    dt = datetime.utcnow()
-    blob_name_prefix = config.BLOB_NAME_PREFIX.format(  year = dt.strftime('%Y'),
-                                                        month = dt.strftime('%b'),
-                                                        date = dt.strftime('%d-%b-%Y'))
-    blob_client = blob_service_client.get_blob_client(container=config.AZURE_STORAGE_ACCOUNT_CONTAINER_NAME, 
-                                                      blob=f"{blob_name_prefix}/{file_name}{dt.strftime('_%d-%b-%Y %I:%M:%S %p')}")
-    file = open(f".\{file_name}", "rb")
-    blob_client.upload_blob(file)
-    file.close()
+    try:
+        dt = datetime.utcnow()
+        blob_name_prefix = config.BLOB_NAME_PREFIX.format(  year = dt.strftime('%Y'),
+                                                            month = dt.strftime('%b'),
+                                                            date = dt.strftime('%d-%b-%Y') )
+        blob_client = blob_service_client.get_blob_client(container=config.AZURE_STORAGE_ACCOUNT_CONTAINER_NAME, 
+                                                        blob=f"{blob_name_prefix}/{file_name}{dt.strftime('_%d-%b-%Y %I:%M:%S %p')}")
+        file = open(f".\{file_name}", "rb")
+        blob_client.upload_blob(file)
+        file.close()
+        return True
+    except:
+        return False
 
 def remove_parquet_file(file_name):
     ''' Remove the parquet file from local
@@ -144,6 +148,7 @@ def parquet_job(job_info):
     expected_row_count = job_info['result'][3]
 
     if expected_row_count == 0:
+        logging.info(f"expected row count is zero for the script id : {job_info['result'][0]}  filename : {job_info['result'][2]}")
         logging.info('end')
         return False
     
@@ -157,13 +162,17 @@ def parquet_job(job_info):
 
     if is_parquet_generated:
         logging.info(f'upload parquet file to blob {file_name}')
-        blob_upload(file_name)
+        is_blob_upload = blob_upload(file_name)
+
+        if not is_blob_upload:
+            is_parquet_generated = False
+            logging.info(f'blob upload failed for the filename : {file_name}')
 
         logging.info(f'deleting local parquet file {file_name}')
         remove_parquet_file(file_name)
 
     logging.info('end')
-    return True
+    return is_parquet_generated
     
 def run_jobs(results, form_db_username, form_db_password):
     ''' To execute the jobs asynchronously
@@ -184,10 +193,10 @@ def run_jobs(results, form_db_username, form_db_password):
                 
                 job_info.append(local_dic)
             for row in zip(job_info, executor.map(parquet_job, job_info)):
-                if(row[1]):
-                    logging.info(f"parquet generation completed for script id : {row[0]['result'][0]}  filename : {row[0]['result'][2]} ") 
+                if row[1]:
+                    logging.info(f"parquet generation completed for the script id : {row[0]['result'][0]}  filename : {row[0]['result'][2]} ") 
                 else:
-                    logging.info(f"expected row count is zero for the script id : {row[0]['result'][0]}  filename : {row[0]['result'][2]}")
+                    logging.info(f"parquet generation failed for the script id : {row[0]['result'][0]}  filename : {row[0]['result'][2]} ") 
 
 
 if __name__ == "__main__":
