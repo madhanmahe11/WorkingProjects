@@ -7,6 +7,7 @@ import pandas as pd
 import logging
 import config
 import pyodbc
+import csv
 import os
 
 logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
@@ -86,6 +87,19 @@ def exec_sp(conn, sp):
     return rows
 
 
+def generate_audit_csv_file():
+    ''' To generate the new csv file with column names '''
+
+    logging.info(f'Generate the new csv file')
+    audit_csv_filename = f'forms_extract_audition_{datetime.utcnow().strftime("%d-%b-%Y %I_%M_%S %p")}'
+    with open(f'{audit_csv_filename}.csv', 'w', newline='') as file:
+        writer = csv.writer(file)
+        column_names = ["Type_Of_Data","DB","Source_Table_Name","Last_Run_Date","RunStatus","AffectedRows","ErrorMessage"]
+        writer.writerow(column_names)
+
+    return audit_csv_filename
+
+
 def generate_parquet_file(script, file_name, conn):
     ''' To write the parquet file by execute the script 
     Args:
@@ -135,6 +149,39 @@ def remove_parquet_file(file_name):
     '''
     os.remove(f".\{file_name}")
 
+
+def audit_row_dic(db, script, run_status, affected_rows, error_message):
+    ''' To add the row into a dictionary
+    Args:
+        db: Database name
+        table: script
+        run_status: parquet file status
+        affected_rows: no. of rows affected
+        error_message: reason for parquet generation failed
+    Returns:
+        dict: dict. which contains str(column names) and values
+    '''
+    row_dic = {'Type_Of_Data': 'raw',
+                'DB': db,
+                'Source_Table_Name': script,
+                'Last_Run_Date': datetime.utcnow(),  
+                'RunStatus': run_status,
+                'AffectedRows': affected_rows,
+                'ErrorMessage':error_message}
+    return row_dic
+
+def add_row_into_audit_file(audit_row, audit_csv_filename):
+    ''' To add the row into a existing csv file
+    Args:
+        audit_row: dict contains field_names and values for csv file
+        audit_csv_filename: filename for forms db audition 
+    '''
+    with open(f'{audit_csv_filename}.csv', 'a', newline='') as file:
+        field_names = ["Type_Of_Data","DB","Source_Table_Name","Last_Run_Date","RunStatus","AffectedRows","ErrorMessage"]
+        dictwriter_object = csv.DictWriter(file, fieldnames=field_names)
+        dictwriter_object.writerow(audit_row)
+
+
 def parquet_job(job_info):
     ''' To generate and upload the parquet file for each tables
     Args:
@@ -157,7 +204,12 @@ def parquet_job(job_info):
 
     logging.info(f'generating parquet file for filename:  {file_name} script: {script}')
     generate_parquet = generate_parquet_file(script , file_name, conn)
+
     is_parquet_generated = generate_parquet[0]
+    run_status = 'success' if is_parquet_generated else 'fail'
+    affected_rows = generate_parquet[1]
+    error_message = generate_parquet[2]
+
     conn.close()
 
     if is_parquet_generated:
@@ -166,20 +218,26 @@ def parquet_job(job_info):
 
         if not is_blob_upload:
             is_parquet_generated = False
+            run_status = 'fail'
             logging.info(f'blob upload failed for the filename : {file_name}')
 
         logging.info(f'deleting local parquet file {file_name}')
         remove_parquet_file(file_name)
 
+    logging.info(f'insert the data into csv file for script id : {job_info["result"][0]}  filename : {file_name}  run status: {run_status}')
+    audit_row = audit_row_dic(None, script, run_status, affected_rows, error_message)
+    add_row_into_audit_file(audit_row, job_info['audit_csv_filename'])
+
     logging.info('end')
     return is_parquet_generated
     
-def run_jobs(results, form_db_username, form_db_password):
+def run_jobs(results, forms_db_username, forms_db_password, audit_filename):
     ''' To execute the jobs asynchronously
     Args:
         results: splitted row lists based on max job count
-        form_db_username: username for Form database 
-        form_db_password: password for Form database 
+        forms_db_username: username for Forms database 
+        forms_db_password: password for Forms database
+        audit_filename: filename for Forms db audition
     '''
     with concurrent.futures.ProcessPoolExecutor() as executor:
         for result in results:
@@ -188,8 +246,9 @@ def run_jobs(results, form_db_username, form_db_password):
             for row in result:
                 local_dic = {   'result': row,
                                 'host': config.FORMS_DB_SERVER_HOST, 
-                                'username': form_db_username,
-                                'password': form_db_password    }
+                                'username': forms_db_username,
+                                'password': forms_db_password,
+                                'audit_csv_filename': audit_filename    }
                 
                 job_info.append(local_dic)
             for row in zip(job_info, executor.map(parquet_job, job_info)):
@@ -201,7 +260,7 @@ def run_jobs(results, form_db_username, form_db_password):
 
 if __name__ == "__main__":
 
-    # Read form secrets
+    # Read forms secrets
     forms_db_username = read_secret_from_key_vault(config.KEY_VAULT_NAME, config.FORMS_KEY_VAULT_SECRET_NAME_DB_USER_NAME)
     forms_db_password = read_secret_from_key_vault(config.KEY_VAULT_NAME, config.FORMS_KEY_VAULT_SECRET_NAME_DB_PASSWORD)
 
@@ -216,5 +275,8 @@ if __name__ == "__main__":
 
     logging.info(f'job_details: {job_details}')
 
+    #To generate the csv file
+    audit_filename = generate_audit_csv_file()
+
     #To execute the jobs asynchronously
-    run_jobs(job_details, forms_db_username, forms_db_password)
+    run_jobs(job_details, forms_db_username, forms_db_password, audit_filename)

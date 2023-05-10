@@ -181,7 +181,8 @@ def audit_row_dic(db,table,run_status,affected_rows,error_message):
 def add_row_into_audit_file(audit_row, audit_csv_filename):
     ''' To add the row into a existing csv file
     Args:
-        audit_row: dict contains field_names and values for csv file 
+        audit_row: dict contains field_names and values for csv file
+        audit_csv_filename: filename for forms db audition 
     '''
     with open(f'{audit_csv_filename}.csv', 'a', newline='') as file:
         field_names = ["Type_Of_Data","DB","Source_Table_Name","Last_Run_Date","RunStatus","AffectedRows","ErrorMessage"]
@@ -236,7 +237,8 @@ def run_jobs(db_lists, gp_db_username, gp_db_password, audit_filename):
     Args:
         db_lists: splitted DB lists based on max job count
         gp_db_username: username for GP database 
-        gp_db_password: password for GP database 
+        gp_db_password: password for GP database
+        audit_filename: filename for GP db audition
     '''
     with concurrent.futures.ProcessPoolExecutor() as executor:
         for db_list in db_lists:
