@@ -98,7 +98,10 @@ def exec_sp(conn, sp):
 
 
 def generate_audit_csv_file():
-    ''' To generate the new csv file with column names '''
+    ''' To generate the new csv file with column names 
+    Returns:
+        str: filename for Forms db auditing
+    '''
 
     logging.info(f'Generate the new csv file')
     audit_csv_filename = f'forms_extract_audition_{datetime.utcnow().strftime("%d-%b-%Y %I_%M_%S %p")}'

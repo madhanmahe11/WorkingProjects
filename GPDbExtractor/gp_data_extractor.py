@@ -104,7 +104,10 @@ def get_all_tables(conn, db_name, query):
     return [table[0] for table in rows]
 
 def generate_audit_csv_file():
-    ''' To generate the new csv file with column names '''
+    ''' To generate the new csv file with column names 
+    Returns:
+        str: filename for GP db auditing
+    '''
 
     logging.info(f'Generate the new csv file')
     audit_csv_filename = f'gp_extract_audition_{datetime.utcnow().strftime("%d-%b-%Y %I_%M_%S %p")}'
