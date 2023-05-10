@@ -13,7 +13,10 @@ import os
 logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 
 #To connect the blob service client by using azure storage account connection string
-blob_service_client = BlobServiceClient.from_connection_string(config.AZURE_STORAGE_ACCOUNT_CONNECTION_STRING)
+try:
+    blob_service_client = BlobServiceClient.from_connection_string(config.AZURE_STORAGE_ACCOUNT_CONNECTION_STRING)
+except:
+    raise Exception(f'Invalid azure blob connection string : {config.AZURE_STORAGE_ACCOUNT_CONNECTION_STRING}')
 
 def read_secret_from_key_vault(key_vault_name, secret_name):
     """ Read secret from Azure key vault
@@ -25,11 +28,14 @@ def read_secret_from_key_vault(key_vault_name, secret_name):
     Returns:
         str: value of secret
     """
-    Uri = f"https://{key_vault_name}.vault.azure.net"
-    credential = DefaultAzureCredential()
-    client = SecretClient(vault_url=Uri, credential=credential)
-    return client.get_secret(secret_name).value
-    
+    try:
+        Uri = f"https://{key_vault_name}.vault.azure.net"
+        credential = DefaultAzureCredential()
+        client = SecretClient(vault_url=Uri, credential=credential)
+        return client.get_secret(secret_name).value
+    except:
+        raise Exception(f'Failed to read secrets for the secret name : {secret_name}')
+
 def create_db_connection(host, db_name, user_name, password):
     ''' Create DB connection from credentials
     Args:
@@ -40,8 +46,12 @@ def create_db_connection(host, db_name, user_name, password):
     Returns:
         Connection: Db connection
     '''
-    con_str = f'DRIVER=SQL Server;SERVER={host};DATABASE={db_name};ENCRYPT=no;UID={user_name};PWD={password}'
-    return pyodbc.connect(con_str)
+    try:
+        con_str = f'DRIVER=SQL Server;SERVER={host};DATABASE={db_name};ENCRYPT=no;UID={user_name};PWD={password}'
+        return pyodbc.connect(con_str)
+    except:
+        raise Exception(f'Invalid SQL credentials : \n Host : {host} \n DatabaseName : {db_name}\n UserName : {user_name} \n Password : {password}')
+    
 
 def get_list_extract_quries(host, db_name, user_name, password):
     ''' To get list of rows 
