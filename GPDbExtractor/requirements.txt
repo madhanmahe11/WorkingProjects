@@ -1,0 +1,5 @@
+pandas
+pyodbc
+azure-identity
+azure-keyvault-secrets
+azure-storage-blob

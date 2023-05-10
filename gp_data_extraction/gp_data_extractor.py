@@ -261,19 +261,9 @@ def run_jobs(db_lists, gp_db_username, gp_db_password, audit_filename):
 if __name__ == "__main__":
 
     # Read EDW secrets
-    # edw_db_username = read_secret_from_key_vault(config.KEY_VAULT_NAME, config.EDW_KEY_VAULT_SECRET_NAME_DB_USER_NAME)
-    # edw_db_password = read_secret_from_key_vault(config.KEY_VAULT_NAME, config.EDW_KEY_VAULT_SECRET_NAME_DB_PASSWORD)
+    edw_db_username = read_secret_from_key_vault(config.KEY_VAULT_NAME, config.EDW_KEY_VAULT_SECRET_NAME_DB_USER_NAME)
+    edw_db_password = read_secret_from_key_vault(config.KEY_VAULT_NAME, config.EDW_KEY_VAULT_SECRET_NAME_DB_PASSWORD)
 
-    edw_db_username = "madhan"
-
-    edw_db_password = "madhan@123"
-
-
-
-
-    GP_USER_DB_NAME = "madhan"
-
-    GP_USER_DB_PASSWORD = "madhan@123"
     # Get Active GP Databases
     gp_db_list = get_active_gp_databases(   config.EDW_DB_SERVER_HOST, 
                                             config.EDW_DB_NAME, edw_db_username,edw_db_password)    
@@ -281,8 +271,8 @@ if __name__ == "__main__":
     logging.info(f'gp_db_list: {gp_db_list}')
     
     # Read GP secrets
-    # GP_USER_DB_NAME = read_secret_from_key_vault(config.KEY_VAULT_NAME, config.GP_KEY_VAULT_SECRET_NAME_DB_USER_NAME)
-    # GP_USER_DB_PASSWORD = read_secret_from_key_vault(config.KEY_VAULT_NAME, config.GP_KEY_VAULT_SECRET_NAME_DB_PASSWORD)
+    GP_USER_DB_NAME = read_secret_from_key_vault(config.KEY_VAULT_NAME, config.GP_KEY_VAULT_SECRET_NAME_DB_USER_NAME)
+    GP_USER_DB_PASSWORD = read_secret_from_key_vault(config.KEY_VAULT_NAME, config.GP_KEY_VAULT_SECRET_NAME_DB_PASSWORD)
 
     #To split the jobs based on max job count
     job_details = split_jobs(gp_db_list, config.MAX_JOB_COUNT)
