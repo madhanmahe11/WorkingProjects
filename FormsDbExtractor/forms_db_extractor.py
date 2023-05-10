@@ -183,7 +183,7 @@ def run_jobs(results, form_db_username, form_db_password):
     '''
     with concurrent.futures.ProcessPoolExecutor() as executor:
         for result in results:
-            logging.info(f'add DB detail to db list')
+            logging.info(f'add result to job info')
             job_info = []
             for row in result:
                 local_dic = {   'result': row,
