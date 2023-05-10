@@ -53,7 +53,7 @@ def create_db_connection(host, db_name, user_name, password):
         raise Exception(f'Invalid SQL credentials : \n Host : {host} \n DatabaseName : {db_name}\n UserName : {user_name} \n Password : {password}')
     
 
-def get_list_extract_quries(host, db_name, user_name, password):
+def get_list_extract_queries(host, db_name, user_name, password):
     ''' To get list of rows 
     Args:
         host: Name of DB host/ip address
@@ -275,7 +275,7 @@ if __name__ == "__main__":
     forms_db_password = read_secret_from_key_vault(config.KEY_VAULT_NAME, config.FORMS_KEY_VAULT_SECRET_NAME_DB_PASSWORD)
 
     # Get results from sp
-    result_set = get_list_extract_quries(config.FORMS_DB_SERVER_HOST, 
+    result_set = get_list_extract_queries(config.FORMS_DB_SERVER_HOST, 
                                          config.FORMS_DB_NAME, 
                                         forms_db_username,
                                         forms_db_password)    
