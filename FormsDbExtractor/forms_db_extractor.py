@@ -1,3 +1,4 @@
+from apscheduler.schedulers.background import BackgroundScheduler
 from azure.identity import DefaultAzureCredential
 from azure.storage.blob import BlobServiceClient
 from azure.keyvault.secrets import SecretClient
@@ -8,6 +9,7 @@ import argparse
 import logging
 import config
 import pyodbc
+import time
 import csv
 import os
 
@@ -288,7 +290,7 @@ def run_jobs(results, forms_db_username, forms_db_password, audit_filename):
                     logging.info(f"parquet generation failed for the script id : {row[0]['result'][0]}  filename : {row[0]['result'][2]} ") 
 
 
-if __name__ == "__main__":
+def main():
 
     # Read SP arguments from inputs
     sp_args = read_sp_args()
@@ -314,3 +316,21 @@ if __name__ == "__main__":
 
     #To execute the jobs asynchronously
     run_jobs(job_details, forms_db_username, forms_db_password, audit_filename)
+
+
+if __name__ == "__main__":
+
+    # Scheduler to run in the background
+    scheduler = BackgroundScheduler()
+
+    # Add job into the scheduler with interval in hour
+    scheduler.add_job(main, 'interval', hours = config.HOUR_TO_SCHEDULE_JOB)
+
+    # To start the scheduler
+    scheduler.start()
+
+    try:
+        while True:
+            pass
+    except KeyboardInterrupt:
+        scheduler.shutdown()

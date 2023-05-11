@@ -1,5 +1,6 @@
 pandas
 pyodbc
+apscheduler
 azure-identity
 azure-keyvault-secrets
 azure-storage-blob
