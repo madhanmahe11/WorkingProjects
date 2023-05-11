@@ -4,6 +4,7 @@ from azure.keyvault.secrets import SecretClient
 from datetime import datetime
 import concurrent.futures
 import pandas as pd
+import argparse
 import logging
 import config
 import pyodbc
@@ -17,6 +18,21 @@ try:
     blob_service_client = BlobServiceClient.from_connection_string(config.AZURE_STORAGE_ACCOUNT_CONNECTION_STRING)
 except:
     raise Exception(f'Invalid azure blob connection string : {config.AZURE_STORAGE_ACCOUNT_CONNECTION_STRING}')
+
+
+def read_sp_args():
+    """ To read input values for sp arguments
+    Returns:
+        list: list of input values
+        Example: [tablename,filtercolumn,startdate,enddate]
+    """
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-TableName')
+    parser.add_argument('-FilterColumn')
+    parser.add_argument("-StartDate")
+    parser.add_argument("-EndDate")
+    args = parser.parse_args()
+    return args.TableName, args.FilterColumn, args.StartDate, args.EndDate
 
 def read_secret_from_key_vault(key_vault_name, secret_name):
     """ Read secret from Azure key vault
@@ -53,22 +69,23 @@ def create_db_connection(host, db_name, user_name, password):
         raise Exception(f'Invalid SQL credentials : \n Host : {host} \n DatabaseName : {db_name}\n UserName : {user_name} \n Password : {password}')
     
 
-def get_list_extract_queries(host, db_name, user_name, password):
+def get_list_extract_queries(host, db_name, user_name, password, sp_args):
     ''' To get list of rows 
     Args:
         host: Name of DB host/ip address
         db_name: Database name
         user_name: Database user name
         password: Database password
+        sp_args: list of arguments for SP
     Returns:
         List: List of rows
     '''
     conn = create_db_connection(host, db_name, user_name, password)               
     rows = exec_sp(conn, config.SP_GET_SCRIPTS
-                            .format(    table_name = "base.Record",
-                                        filter_column = "createdat",
-                                        start_date = "2022-11-30",
-                                        end_date = "2023-03-31"   ))
+                            .format(    table_name = sp_args[0],
+                                        filter_column = sp_args[1],
+                                        start_date = sp_args[2],
+                                        end_date = sp_args[3]   ))
     conn.close()
     return [row for row in rows]
 
@@ -200,7 +217,7 @@ def parquet_job(job_info):
     Args:
         job_info: job info with row,username,password,host
     Returns:
-        bool: true
+        bool: if parquet generate and upload into the blob successfully it returns true else false 
     '''
     logging.info('start')
     script = job_info['result'][1]
@@ -273,15 +290,19 @@ def run_jobs(results, forms_db_username, forms_db_password, audit_filename):
 
 if __name__ == "__main__":
 
+    # Read SP arguments from inputs
+    sp_args = read_sp_args()
+
     # Read forms secrets
     forms_db_username = read_secret_from_key_vault(config.KEY_VAULT_NAME, config.FORMS_KEY_VAULT_SECRET_NAME_DB_USER_NAME)
     forms_db_password = read_secret_from_key_vault(config.KEY_VAULT_NAME, config.FORMS_KEY_VAULT_SECRET_NAME_DB_PASSWORD)
 
     # Get results from sp
     result_set = get_list_extract_queries(config.FORMS_DB_SERVER_HOST, 
-                                         config.FORMS_DB_NAME, 
-                                        forms_db_username,
-                                        forms_db_password)    
+                                          config.FORMS_DB_NAME, 
+                                          forms_db_username,
+                                          forms_db_password,
+                                          sp_args)    
 
     #To split the jobs based on max job count
     job_details = split_jobs(result_set, config.MAX_JOB_COUNT)
