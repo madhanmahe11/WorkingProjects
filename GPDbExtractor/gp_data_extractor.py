@@ -141,7 +141,7 @@ def generate_parquet_file(table_name,conn):
         parquet_info = False,None,0,'failed to execute the query' 
         return parquet_info
 
-def blob_upload(parquet_filename,db_name,table_name):
+def blob_upload(parquet_filename, db_name, table_name):
     ''' Upload the parquet file into azure blob
     Args:
         parquet_filename: parquet filename
@@ -152,9 +152,8 @@ def blob_upload(parquet_filename,db_name,table_name):
         dt = datetime.utcnow()
         blob_name_prefix = config.BLOB_NAME_PREFIX.format(  year = dt.strftime('%Y'),
                                                             month = dt.strftime('%b'),
-                                                            date = dt.strftime('%d-%b-%Y'),
-                                                            db_name = db_name )
-        blob_client = blob_service_client.get_blob_client(container=config.AZURE_STORAGE_ACCOUNT_CONTAINER_NAME, blob=f"{blob_name_prefix}/{table_name}{dt.strftime('_%d-%b-%Y %I:%M:%S %p')}")
+                                                            date = dt.strftime('%d-%b-%Y')  )
+        blob_client = blob_service_client.get_blob_client(container=config.AZURE_STORAGE_ACCOUNT_CONTAINER_NAME, blob=f"{blob_name_prefix}/{db_name}_{table_name}{dt.strftime('_%d-%b-%Y %I:%M:%S %p')}")
         file = open(f".\{parquet_filename}", "rb")
         blob_client.upload_blob(file)
         file.close()

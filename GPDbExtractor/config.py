@@ -40,4 +40,4 @@ AZURE_STORAGE_ACCOUNT_CONNECTION_STRING = ""    # Azure Storage Account Connecti
 AZURE_STORAGE_ACCOUNT_CONTAINER_NAME = ""       # Azure ContainerName
 
 # Azure blob name
-BLOB_NAME_PREFIX = "GP/{year}/{month}/{date}/{db_name}"
+BLOB_NAME_PREFIX = "GP/{year}/{month}/{date}"
