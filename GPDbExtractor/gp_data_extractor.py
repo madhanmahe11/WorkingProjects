@@ -1,3 +1,4 @@
+from apscheduler.schedulers.background import BackgroundScheduler
 from azure.identity import DefaultAzureCredential
 from azure.storage.blob import BlobServiceClient
 from azure.keyvault.secrets import SecretClient
@@ -268,9 +269,9 @@ def run_jobs(db_lists, gp_db_username, gp_db_password, audit_filename):
                     logging.info(f"parquet generation completed for {db[0]['db_name']}")  
                 else:
                     logging.info(f"parquet generation failed for {db[0]['db_name']}")  
-                      
 
-if __name__ == "__main__":
+
+def main():
 
     # Read EDW secrets
     edw_db_username = read_secret_from_key_vault(config.KEY_VAULT_NAME, config.EDW_KEY_VAULT_SECRET_NAME_DB_USER_NAME)
@@ -296,3 +297,21 @@ if __name__ == "__main__":
 
     #To execute the jobs asynchronously
     run_jobs(job_details, GP_USER_DB_NAME, GP_USER_DB_PASSWORD, audit_filename)
+                      
+
+if __name__ == "__main__":
+
+    # Scheduler to run in the background
+    scheduler = BackgroundScheduler()
+
+    # Add job into the scheduler with interval in hour
+    scheduler.add_job(main, 'interval', hours = config.HOUR_TO_SCHEDULE_JOB)
+
+    # To start the scheduler
+    scheduler.start()
+
+    try:
+        while True:
+            pass
+    except KeyboardInterrupt:
+        scheduler.shutdown()

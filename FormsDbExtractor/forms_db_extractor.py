@@ -9,7 +9,6 @@ import argparse
 import logging
 import config
 import pyodbc
-import time
 import csv
 import os
 
