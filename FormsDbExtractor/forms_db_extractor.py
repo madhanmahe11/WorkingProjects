@@ -151,7 +151,7 @@ def generate_parquet_file(script, file_name, conn):
         parquet_info = True,len(df),None
         return parquet_info
     except:
-        parquet_info = False,0,'failed to execute the sp' 
+        parquet_info = False,0,'failed to execute the script' 
         return parquet_info
 
 def blob_upload(file_name):
