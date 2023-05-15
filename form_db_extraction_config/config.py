@@ -23,3 +23,6 @@ BLOB_NAME_PREFIX = "Forms/{year}/{month}/{date}"
 
 # Stored procedure to get list of scripts
 SP_GET_SCRIPTS = "EXEC usp_GenerateExtractionScripts_Monthly '{table_name}','{filter_column}','{start_date}','{end_date}'"
+
+# Hour to schedule the job
+HOUR_TO_SCHEDULE_JOB = 1
