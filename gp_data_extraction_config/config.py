@@ -41,3 +41,6 @@ AZURE_STORAGE_ACCOUNT_CONTAINER_NAME = "raw"
 
 # Azure blob name
 BLOB_NAME_PREFIX = "GP/{year}/{month}/{date}"
+
+# Hour to schedule the job
+HOUR_TO_SCHEDULE_JOB = 1
